@@ -1,7 +1,6 @@
 import pygame
 import sys
 
-
 # Pygameの初期化
 pygame.init()
 
@@ -18,6 +17,7 @@ BLACK = (0, 0, 0)  # テキストの色
 GRAY = (200, 200, 200)  # 情報エリアの背景色
 RED = (255, 0, 0)  # ゾンビの色
 BLUE = (0, 0, 255)  # 植物の色
+YELLOW = (255, 255, 0)  # SET用の植物
 
 # 画面の作成
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -29,18 +29,16 @@ font = pygame.font.Font(None, 36)
 # ゾンビクラスの定義
 class Zombie:
     def __init__(self, x, y, speed):
-        self.rect = pygame.Rect(x, y, GRID_SIZE, GRID_SIZE)  # ゾンビを長方形で表す
+        self.rect = pygame.Rect(x, y, GRID_SIZE, GRID_SIZE)
         self.speed = speed
-        self.alive = True  # 障害物に到達すると停止
+        self.alive = True
 
     def move(self, obstacles):
         if self.alive:
-            # ゾンビが障害物に衝突しているか確認
             for obstacle in obstacles:
                 if self.rect.colliderect(obstacle):
-                    self.alive = False  # 衝突したら停止
+                    self.alive = False
                     return
-            # 左に移動
             self.rect.x -= self.speed
 
     def draw(self, surface):
@@ -59,10 +57,11 @@ def draw_grid(surface, width, height, grid_size, offset_y):
         pygame.draw.line(surface, WHITE, (0, y), (width, y))
 
 # 情報エリアを描画する関数
-def draw_info_area(surface, width, height):
+def draw_info_area(surface, width, height, plant_icon):
     pygame.draw.rect(surface, GRAY, (0, 0, width, height))
     draw_text(surface, "score: 0", 20, 20, BLACK)
-    draw_text(surface, "set", 200, 20, BLACK)
+    draw_text(surface, "SET", 200, 20, BLACK)
+    surface.blit(plant_icon, (250, 20))  # SETエリアに植物のアイコンを表示
 
 # メインのゲームループ
 def main():
@@ -74,26 +73,46 @@ def main():
     # 障害物（植物）を格納するリスト
     plants = []
 
+    # 植物のアイコンを定義（SETエリア用）
+    plant_icon = pygame.Surface((GRID_SIZE, GRID_SIZE))
+    plant_icon.fill(YELLOW)  # SETエリアの植物は黄色
+
+    dragging = False  # ドラッグ中かどうかを判定
+    plant_drag_rect = plant_icon.get_rect(topleft=(250, 20))  # ドラッグ用の植物
+
     # ゲームループ
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+
+            # ドラッグ開始
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                # マウスクリックで植物を配置
+                if plant_drag_rect.collidepoint(event.pos):  # SETエリアの植物をクリック
+                    dragging = True
+
+            # ドラッグ中の処理
+            elif event.type == pygame.MOUSEMOTION and dragging:
+                plant_drag_rect.center = event.pos  # マウスの位置に追従
+
+            # ドラッグ終了（植物を配置）
+            elif event.type == pygame.MOUSEBUTTONUP and dragging:
+                dragging = False
                 mouse_x, mouse_y = event.pos
-                if mouse_y > INFO_AREA_HEIGHT:  # 情報エリア以外をクリック可能
+                if mouse_y > INFO_AREA_HEIGHT:  # 情報エリア外に配置
                     grid_x = (mouse_x // GRID_SIZE) * GRID_SIZE
                     grid_y = (mouse_y // GRID_SIZE) * GRID_SIZE
-                    plant_rect = pygame.Rect(grid_x, grid_y, GRID_SIZE, GRID_SIZE)
-                    plants.append(plant_rect)
+                    plants.append(pygame.Rect(grid_x, grid_y, GRID_SIZE, GRID_SIZE))
+
+                # ドラッグ位置を初期化
+                plant_drag_rect.topleft = (250, 20)
 
         # 背景の描画
         screen.fill(GREEN)
 
-        # 情報エリアの描画
-        draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT)
+        # 情報エリアとSETエリアの描画
+        draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, plant_icon)
 
         # マス目の描画
         draw_grid(screen, SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, INFO_AREA_HEIGHT)
@@ -101,6 +120,10 @@ def main():
         # 植物の描画
         for plant in plants:
             pygame.draw.rect(screen, BLUE, plant)
+
+        # ドラッグ中の植物の描画
+        if dragging:
+            screen.blit(plant_icon, plant_drag_rect.topleft)
 
         # ゾンビの動きと描画
         zombie.move(plants)
