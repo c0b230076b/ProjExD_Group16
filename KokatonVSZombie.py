@@ -1,6 +1,7 @@
 import pygame
 import sys
 
+
 # Pygameの初期化
 pygame.init()
 
