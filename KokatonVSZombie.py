@@ -35,8 +35,11 @@ plant_image = pygame.transform.scale(plant_image, (48, 67))
 SET_AREA_X = 250
 SET_AREA_Y = 20
 
-# moneyの初期値
+# moneyの初期値と回復設定
 money = 100
+money_increase_interval = 2000  # moneyが増える間隔（ミリ秒）
+money_increase_amount = 10  # 増える金額
+last_money_update = pygame.time.get_ticks()  # 最後にmoneyを増やした時間
 
 # ゾンビクラスの定義
 class Zombie:
@@ -79,7 +82,7 @@ def draw_info_area(surface, width, height, plant_icon, money):
 
 # メインのゲームループ
 def main():
-    global money
+    global money, last_money_update
     clock = pygame.time.Clock()
 
     # ゾンビを1体生成
@@ -117,7 +120,13 @@ def main():
                     money -= 50  # 植物配置でお金を消費
                 plant_drag_rect.topleft = (SET_AREA_X, SET_AREA_Y)
 
-        # 背景と情報エリアの描画
+        # 時間経過でmoneyを増やす
+        current_time = pygame.time.get_ticks()
+        if current_time - last_money_update >= money_increase_interval:
+            money += money_increase_amount
+            last_money_update = current_time
+
+        # 背景の描画
         screen.fill(GREEN)
         draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, plant_image, money)
 
