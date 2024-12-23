@@ -11,7 +11,8 @@ GRID_ROWS = 5  # マスの行数
 GRID_COLUMNS = 9  # マスの列数
 GRID_SIZE = 80  # 1つのマスのサイズ
 INFO_AREA_HEIGHT = 80  # 上部の情報エリアの高さ
-SCREEN_WIDTH = GRID_COLUMNS * GRID_SIZE + 200  # 画面の幅を広げる
+GRID_OFFSET_X = 150  # マス目を右にずらすオフセット
+SCREEN_WIDTH = GRID_COLUMNS * GRID_SIZE + GRID_OFFSET_X + 200  # 画面の幅を広げる
 SCREEN_HEIGHT = GRID_ROWS * GRID_SIZE + INFO_AREA_HEIGHT  # 画面の高さ
 
 # 色の定義 (RGB形式)
@@ -33,10 +34,6 @@ current_path = os.path.dirname(__file__)  # カレントディレクトリ
 plant_image = pygame.image.load(os.path.join(current_path, "fig", "7.png"))  # 植物画像
 plant_image = pygame.transform.flip(plant_image, True, False)
 plant_image = pygame.transform.scale(plant_image, (48, 67))
-
-# SETエリアの座標
-SET_AREA_X = 250
-SET_AREA_Y = 20
 
 # moneyの初期値と回復設定
 money = 100
@@ -64,8 +61,8 @@ class Zombie:
             pygame.draw.rect(surface, RED, self.rect)
 
     def is_off_screen(self):
-        """ゾンビが画面左端を通過したかを判定"""
-        return self.rect.x < 0
+        """ゾンビが左端を通過したかを判定"""
+        return self.rect.x < GRID_OFFSET_X  # 左端の判定をオフセットに基づいて調整
 
 # テキストを描画する関数
 def draw_text(surface, text, x, y, color):
@@ -73,18 +70,24 @@ def draw_text(surface, text, x, y, color):
     surface.blit(rendered_text, (x, y))
 
 # マス目を描画する関数
-def draw_grid(surface, rows, columns, grid_size, offset_y):
-    for x in range(0, columns * grid_size, grid_size):
-        pygame.draw.line(surface, WHITE, (x, offset_y), (x, offset_y + rows * grid_size))
-    for y in range(offset_y, offset_y + rows * grid_size, grid_size):
-        pygame.draw.line(surface, WHITE, (0, y), (columns * grid_size, y))
+def draw_grid(surface, rows, columns, grid_size, offset_x, offset_y):
+    for x in range(0, columns * grid_size + 1, grid_size):  # 右端の線を含める
+        pygame.draw.line(surface, WHITE, (x + offset_x, offset_y), (x + offset_x, offset_y + rows * grid_size))
+    for y in range(offset_y, offset_y + rows * grid_size + 1, grid_size):  # 下端の線を含める
+        pygame.draw.line(surface, WHITE, (offset_x, y), (offset_x + columns * grid_size, y))
 
 # 情報エリアを描画する関数
 def draw_info_area(surface, width, height, plant_icon, money):
+    # 情報エリア背景
     pygame.draw.rect(surface, GRAY, (0, 0, width, height))
+
+    # money表示（左上）
     draw_text(surface, f"money: {money}", 20, 20, BLACK)
-    draw_text(surface, "SET", 200, 20, BLACK)
-    surface.blit(plant_icon, (SET_AREA_X, SET_AREA_Y))
+
+    # SETエリア（moneyの右側に配置）
+    set_area_x = 160  # moneyの隣に配置
+    draw_text(surface, "SET", set_area_x, 20, BLACK)
+    surface.blit(plant_image, (set_area_x + 50, 13))  # SETエリアに植物アイコンを表示
 
 # メインのゲームループ
 def main():
@@ -96,7 +99,7 @@ def main():
 
     # 植物のドラッグ管理
     dragging = False
-    plant_drag_rect = plant_image.get_rect(topleft=(SET_AREA_X, SET_AREA_Y))
+    dragging_plant_rect = plant_image.get_rect()  # ドラッグ中の植物の位置
     plants = []  # 配置された植物のリスト
 
     # ゲームループ
@@ -109,23 +112,25 @@ def main():
 
             # ドラッグ開始
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if plant_drag_rect.collidepoint(event.pos):
+                set_area_x = 150
+                set_area_rect = pygame.Rect(set_area_x + 40, 20, plant_image.get_width(), plant_image.get_height())
+                if set_area_rect.collidepoint(event.pos):
                     dragging = True
+                    dragging_plant_rect.topleft = event.pos
 
             # ドラッグ中
             elif event.type == pygame.MOUSEMOTION and dragging:
-                plant_drag_rect.center = event.pos
+                dragging_plant_rect.center = event.pos
 
             # ドラッグ終了（植物配置）
             elif event.type == pygame.MOUSEBUTTONUP and dragging:
                 dragging = False
                 mouse_x, mouse_y = event.pos
-                if mouse_y > INFO_AREA_HEIGHT and money >= 50:  # 植物設置にmoneyが必要
-                    grid_x = (mouse_x // GRID_SIZE) * GRID_SIZE
+                if mouse_y > INFO_AREA_HEIGHT and mouse_x > GRID_OFFSET_X and money >= 50:
+                    grid_x = ((mouse_x - GRID_OFFSET_X) // GRID_SIZE) * GRID_SIZE + GRID_OFFSET_X
                     grid_y = ((mouse_y - INFO_AREA_HEIGHT) // GRID_SIZE) * GRID_SIZE + INFO_AREA_HEIGHT
                     plants.append((grid_x, grid_y))
                     money -= 50  # 植物配置でお金を消費
-                plant_drag_rect.topleft = (SET_AREA_X, SET_AREA_Y)
 
         # 時間経過でmoneyを増やす
         current_time = pygame.time.get_ticks()
@@ -142,7 +147,7 @@ def main():
         # 背景の描画
         screen.fill(GREEN)
         draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, plant_image, money)
-        draw_grid(screen, GRID_ROWS, GRID_COLUMNS, GRID_SIZE, INFO_AREA_HEIGHT)
+        draw_grid(screen, GRID_ROWS, GRID_COLUMNS, GRID_SIZE, GRID_OFFSET_X, INFO_AREA_HEIGHT)
 
         # ゾンビの動きと描画
         for zombie in zombies:
@@ -164,7 +169,7 @@ def main():
 
         # ドラッグ中の植物の描画
         if dragging:
-            screen.blit(plant_image, plant_drag_rect.topleft)
+            screen.blit(plant_image, dragging_plant_rect.topleft)
 
         # 画面の更新
         pygame.display.update()
