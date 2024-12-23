@@ -1,15 +1,18 @@
 import pygame
 import sys
 import os
+import random
 
 # Pygameの初期化
 pygame.init()
 
 # 画面サイズとマス目サイズの設定
-SCREEN_WIDTH = 800  # 画面の幅
-SCREEN_HEIGHT = 600  # 画面の高さ
+GRID_ROWS = 5  # マスの行数
+GRID_COLUMNS = 9  # マスの列数
 GRID_SIZE = 80  # 1つのマスのサイズ
 INFO_AREA_HEIGHT = 80  # 上部の情報エリアの高さ
+SCREEN_WIDTH = GRID_COLUMNS * GRID_SIZE + 200  # 画面の幅を広げる
+SCREEN_HEIGHT = GRID_ROWS * GRID_SIZE + INFO_AREA_HEIGHT  # 画面の高さ
 
 # 色の定義 (RGB形式)
 GREEN = (0, 128, 0)  # 背景の緑色
@@ -41,25 +44,28 @@ money_increase_interval = 2000  # moneyが増える間隔（ミリ秒）
 money_increase_amount = 10  # 増える金額
 last_money_update = pygame.time.get_ticks()  # 最後にmoneyを増やした時間
 
+# ゾンビの出現管理
+zombie_spawn_interval = 5000  # 5秒ごとにゾンビを出現
+last_zombie_spawn = pygame.time.get_ticks()
+
 # ゾンビクラスの定義
 class Zombie:
     def __init__(self, x, y, speed):
-        self.rect = pygame.Rect(x, y, 48, 67)  # ゾンビを長方形で表す
+        self.rect = pygame.Rect(x, y, 48, 67)
         self.speed = speed
         self.alive = True
 
-    def move(self, plants):
+    def move(self):
         if self.alive:
-            for plant in plants:
-                plant_rect = pygame.Rect(plant[0], plant[1], 48, 67)
-                if self.rect.colliderect(plant_rect):  # 植物と衝突判定
-                    self.alive = False
-                    return
-            self.rect.x -= self.speed  # 左に移動
+            self.rect.x -= self.speed
 
     def draw(self, surface):
         if self.alive:
             pygame.draw.rect(surface, RED, self.rect)
+
+    def is_off_screen(self):
+        """ゾンビが画面左端を通過したかを判定"""
+        return self.rect.x < 0
 
 # テキストを描画する関数
 def draw_text(surface, text, x, y, color):
@@ -67,11 +73,11 @@ def draw_text(surface, text, x, y, color):
     surface.blit(rendered_text, (x, y))
 
 # マス目を描画する関数
-def draw_grid(surface, width, height, grid_size, offset_y):
-    for x in range(0, width, grid_size):
-        pygame.draw.line(surface, WHITE, (x, offset_y), (x, height))
-    for y in range(offset_y, height, grid_size):
-        pygame.draw.line(surface, WHITE, (0, y), (width, y))
+def draw_grid(surface, rows, columns, grid_size, offset_y):
+    for x in range(0, columns * grid_size, grid_size):
+        pygame.draw.line(surface, WHITE, (x, offset_y), (x, offset_y + rows * grid_size))
+    for y in range(offset_y, offset_y + rows * grid_size, grid_size):
+        pygame.draw.line(surface, WHITE, (0, y), (columns * grid_size, y))
 
 # 情報エリアを描画する関数
 def draw_info_area(surface, width, height, plant_icon, money):
@@ -82,11 +88,11 @@ def draw_info_area(surface, width, height, plant_icon, money):
 
 # メインのゲームループ
 def main():
-    global money, last_money_update
+    global money, last_money_update, last_zombie_spawn
     clock = pygame.time.Clock()
 
-    # ゾンビを1体生成
-    zombie = Zombie(SCREEN_WIDTH, INFO_AREA_HEIGHT + GRID_SIZE * 2, 2)
+    # ゾンビリスト
+    zombies = []
 
     # 植物のドラッグ管理
     dragging = False
@@ -95,6 +101,7 @@ def main():
 
     # ゲームループ
     while True:
+        # イベント処理
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -115,7 +122,7 @@ def main():
                 mouse_x, mouse_y = event.pos
                 if mouse_y > INFO_AREA_HEIGHT and money >= 50:  # 植物設置にmoneyが必要
                     grid_x = (mouse_x // GRID_SIZE) * GRID_SIZE
-                    grid_y = (mouse_y // GRID_SIZE) * GRID_SIZE
+                    grid_y = ((mouse_y - INFO_AREA_HEIGHT) // GRID_SIZE) * GRID_SIZE + INFO_AREA_HEIGHT
                     plants.append((grid_x, grid_y))
                     money -= 50  # 植物配置でお金を消費
                 plant_drag_rect.topleft = (SET_AREA_X, SET_AREA_Y)
@@ -126,16 +133,30 @@ def main():
             money += money_increase_amount
             last_money_update = current_time
 
+        # ゾンビを定期的に出現させる
+        if current_time - last_zombie_spawn >= zombie_spawn_interval:
+            random_row = random.randint(0, GRID_ROWS - 1)
+            zombies.append(Zombie(SCREEN_WIDTH - 50, INFO_AREA_HEIGHT + random_row * GRID_SIZE, 1))  # ゾンビのスピードは遅め
+            last_zombie_spawn = current_time
+
         # 背景の描画
         screen.fill(GREEN)
         draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, plant_image, money)
-
-        # マス目の描画
-        draw_grid(screen, SCREEN_WIDTH, SCREEN_HEIGHT, GRID_SIZE, INFO_AREA_HEIGHT)
+        draw_grid(screen, GRID_ROWS, GRID_COLUMNS, GRID_SIZE, INFO_AREA_HEIGHT)
 
         # ゾンビの動きと描画
-        zombie.move(plants)
-        zombie.draw(screen)
+        for zombie in zombies:
+            zombie.move()
+            zombie.draw(screen)
+
+        # ゲームオーバー判定
+        for zombie in zombies:
+            if zombie.is_off_screen():
+                draw_text(screen, "GAME OVER", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, BLACK)
+                pygame.display.update()
+                pygame.time.wait(3000)
+                pygame.quit()
+                sys.exit()
 
         # 配置された植物の描画
         for x, y in plants:
