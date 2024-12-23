@@ -9,7 +9,7 @@ pygame.init()
 # 画面サイズとマス目サイズの設定
 GRID_ROWS = 5  # マスの行数
 GRID_COLUMNS = 9  # マスの列数
-GRID_SIZE = 80  # 1つのマスのサイズ
+GRID_SIZE = 90  # 1つのマスのサイズ（変更）
 INFO_AREA_HEIGHT = 80  # 上部の情報エリアの高さ
 GRID_OFFSET_X = 150  # マス目を右にずらすオフセット
 SCREEN_WIDTH = GRID_COLUMNS * GRID_SIZE + GRID_OFFSET_X + 200  # 画面の幅を広げる
@@ -22,6 +22,7 @@ BLACK = (0, 0, 0)  # テキストの色
 GRAY = (200, 200, 200)  # 情報エリアの背景色
 RED = (255, 0, 0)  # 敵ゾンビの色
 BLUE = (0, 0, 255)  # 弾の色
+HP_GREEN = (0, 255, 0)  # HPバーの色
 
 # 画面の作成
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -34,7 +35,7 @@ font = pygame.font.Font(None, 36)
 current_path = os.path.dirname(__file__)  # カレントディレクトリ
 plant_image = pygame.image.load(os.path.join(current_path, "fig", "7.png"))  # 植物画像
 plant_image = pygame.transform.flip(plant_image, True, False)
-plant_image = pygame.transform.scale(plant_image, (48, 67))
+plant_image = pygame.transform.scale(plant_image, (50, 75))  # サイズ調整
 
 # moneyの初期値と回復設定
 money = 100
@@ -50,16 +51,32 @@ BULLET_SPEED = 5
 zombie_spawn_interval = 5000  # 5秒ごとにゾンビを出現
 last_zombie_spawn = pygame.time.get_ticks()
 
+# HPバーを描画する関数
+def draw_hp_bar(surface, rect, hp, max_hp):
+    """HPバーを描画"""
+    bar_width = rect.width
+    bar_height = 6
+    hp_ratio = hp / max_hp
+    hp_width = int(bar_width * hp_ratio)
+
+    # HPバーの背景（赤）
+    pygame.draw.rect(surface, RED, (rect.x, rect.y - bar_height - 2, bar_width, bar_height))
+    # 現在のHP（緑）
+    if hp > 0:
+        pygame.draw.rect(surface, HP_GREEN, (rect.x, rect.y - bar_height - 2, hp_width, bar_height))
+
 # ゾンビクラスの定義
 class Zombie:
     def __init__(self, x, y, speed, hp):
-        self.rect = pygame.Rect(x, y, 48, 67)
+        self.rect = pygame.Rect(x, y, 50, 75)
         self.speed = speed
         self.hp = hp  # ゾンビのHP
+        self.max_hp = hp
         self.alive = True
+        self.attacking = False  # 攻撃中フラグ
 
     def move(self):
-        if self.alive:
+        if self.alive and not self.attacking:  # 攻撃中でない場合に移動
             self.rect.x -= self.speed
 
     def take_damage(self, damage):
@@ -67,20 +84,22 @@ class Zombie:
         self.hp -= damage
         if self.hp <= 0:
             self.alive = False
+            self.attacking = False  # 攻撃状態を解除
 
     def draw(self, surface):
         if self.alive:
             pygame.draw.rect(surface, RED, self.rect)
+            draw_hp_bar(surface, self.rect, self.hp, self.max_hp)
 
     def is_off_screen(self):
         """ゾンビが左端を通過したかを判定"""
-        return self.rect.x < GRID_OFFSET_X  # 左端の判定をオフセットに基づいて調整
-
+        return self.rect.x < GRID_OFFSET_X
 # 植物クラスの定義
 class Plant:
     def __init__(self, x, y, hp):
-        self.rect = pygame.Rect(x, y, 48, 67)
+        self.rect = pygame.Rect(x, y, 50, 75)
         self.hp = hp  # 植物のHP
+        self.max_hp = hp
         self.alive = True
         self.last_shot_time = pygame.time.get_ticks()
 
@@ -92,7 +111,6 @@ class Plant:
 
     def shoot(self, zombies):
         """2秒間隔で弾を発射"""
-        # 同じ列にゾンビがいる場合のみ発射
         for zombie in zombies:
             if zombie.alive and zombie.rect.y == self.rect.y:
                 current_time = pygame.time.get_ticks()
@@ -104,6 +122,7 @@ class Plant:
     def draw(self, surface):
         if self.alive:
             surface.blit(plant_image, self.rect.topleft)
+            draw_hp_bar(surface, self.rect, self.hp, self.max_hp)
 
 # 弾クラスの定義
 class Bullet:
@@ -152,42 +171,33 @@ def main():
 
     # 植物のドラッグ管理
     dragging = False
-    dragging_offset_x = 0
-    dragging_offset_y = 0
-    dragging_plant_rect = plant_image.get_rect()  # ドラッグ中の植物の位置
+    dragging_plant_rect = plant_image.get_rect()
 
     # ゲームループ
     while True:
-        # イベント処理
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
 
-            # ドラッグ開始
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 set_area_x = 150
                 set_area_rect = pygame.Rect(set_area_x + 50, 13, plant_image.get_width(), plant_image.get_height())
                 if set_area_rect.collidepoint(event.pos):
                     dragging = True
-                    dragging_offset_x = event.pos[0] - set_area_rect.x
-                    dragging_offset_y = event.pos[1] - set_area_rect.y
                     dragging_plant_rect.topleft = event.pos
 
-            # ドラッグ中
             elif event.type == pygame.MOUSEMOTION and dragging:
-                dragging_plant_rect.x = event.pos[0] - dragging_offset_x
-                dragging_plant_rect.y = event.pos[1] - dragging_offset_y
+                dragging_plant_rect.center = event.pos
 
-            # ドラッグ終了（植物配置）
             elif event.type == pygame.MOUSEBUTTONUP and dragging:
                 dragging = False
                 mouse_x, mouse_y = event.pos
                 if mouse_y > INFO_AREA_HEIGHT and mouse_x > GRID_OFFSET_X and money >= 50:
                     grid_x = ((mouse_x - GRID_OFFSET_X) // GRID_SIZE) * GRID_SIZE + GRID_OFFSET_X
                     grid_y = ((mouse_y - INFO_AREA_HEIGHT) // GRID_SIZE) * GRID_SIZE + INFO_AREA_HEIGHT
-                    plants.append(Plant(grid_x, grid_y, hp=100))  # 植物のHPを設定
-                    money -= 50  # 植物配置でお金を消費
+                    plants.append(Plant(grid_x, grid_y, hp=100))
+                    money -= 50
 
         # 時間経過でmoneyを増やす
         current_time = pygame.time.get_ticks()
@@ -195,7 +205,7 @@ def main():
             money += money_increase_amount
             last_money_update = current_time
 
-        # ゾンビを定期的に出現させる
+        # ゾンビを定期的に出現
         if current_time - last_zombie_spawn >= zombie_spawn_interval:
             random_row = random.randint(0, GRID_ROWS - 1)
             zombies.append(Zombie(SCREEN_WIDTH - 50, INFO_AREA_HEIGHT + random_row * GRID_SIZE, speed=1, hp=50))
@@ -216,7 +226,7 @@ def main():
                     zombie.take_damage(BULLET_DAMAGE)
                     bullets.remove(bullet)
                     break
-            if bullet.rect.x > SCREEN_WIDTH:  # 弾が画面外に出たら削除
+            if bullet.rect.x > SCREEN_WIDTH:
                 bullets.remove(bullet)
 
         # 背景の描画
@@ -224,18 +234,20 @@ def main():
         draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, money, plant_image)
         draw_grid(screen, GRID_ROWS, GRID_COLUMNS, GRID_SIZE, GRID_OFFSET_X, INFO_AREA_HEIGHT)
 
+        # ゾンビと植物の衝突判定
+        for zombie in zombies:
+            for plant in plants:
+                if zombie.alive and plant.alive and zombie.rect.colliderect(plant.rect):
+                    zombie.attacking = True  # ゾンビは攻撃中
+                    plant.take_damage(1)  # 植物に継続的ダメージ
+                    zombie.take_damage(1)  # ゾンビにも継続的ダメージ
+                else:
+                    zombie.attacking = False  # 衝突していない場合は移動を再開
+
         # ゾンビの動きと描画
         for zombie in zombies[:]:
             if zombie.alive:
                 zombie.move()
-                # ゾンビが植物と衝突
-                for plant in plants:
-                    if plant.alive and zombie.rect.colliderect(plant.rect):
-                        plant.take_damage(1)  # 植物が継続的にダメージを受ける
-                        zombie.take_damage(1)  # ゾンビも継続的にダメージを受ける
-                        if not plant.alive:
-                            zombies.remove(zombie)
-                            break
                 zombie.draw(screen)
 
         # 植物の描画
@@ -260,10 +272,8 @@ def main():
                 pygame.quit()
                 sys.exit()
 
-        # 画面の更新
         pygame.display.update()
         clock.tick(60)
 
-# メイン関数の実行
 if __name__ == "__main__":
     main()
