@@ -189,7 +189,7 @@ def draw_title(screen: pygame.Surface):
     dis_txt = fonto.render("Enterを押してゲームスタート", True, (0,0,0))  # 説明の文字Surface生成
     dis_txt_rct = dis_txt.get_rect()  # 説明テキストのrectを抽出
     dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+50)
-    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/2.png"), 0, 1.5)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("./fig/2.png"), 0, 1.5)
     kk_rct = kk_img.get_rect()
     kk_rct.center = 300, 100
     screen.blit(title, [0,0])
@@ -261,7 +261,7 @@ def draw_gameover(screen: pygame.Surface):
     dis_txt = dis.render("×を押して終了してね", True, (255,255,255))
     dis_txt_rct = dis_txt.get_rect()
     dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+100)
-    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/8.png"), 0, 2)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("./fig/8.png"), 0, 2)
     kk_rct = kk_img.get_rect()
     kk_rct.center = 500, 500
     screen.blit(gameover, [0,0])
@@ -284,6 +284,13 @@ def main():
     dragging2 = False
     dragging_plant_rect = plant_image.get_rect()
     dragging_plant_rect2 = plant_image2.get_rect()
+    # scop画像の読み込み
+    scop_image = pygame.image.load(os.path.join(current_path, "fig", "scop.png"))
+    scop_image = pygame.transform.scale(scop_image, (48, 64))  # サイズ調整
+    # scopアイテムのドラッグ管理
+    dragging_scop = False
+    dragging_scop_rect = scop_image.get_rect()
+    dragging_scop_rect.topleft = (730, 20)  # 初期位置（情報エリア内）
     
     # score
     score = 0
@@ -303,6 +310,11 @@ def main():
 
         elif game_start == True:
             if event.type == pygame.MOUSEBUTTONDOWN:
+                # scopアイテムエリアのクリック判定
+                scop_area_rect = pygame.Rect(700, 20, scop_image.get_width(), scop_image.get_height())
+                if scop_area_rect.collidepoint(event.pos):
+                    dragging_scop = True
+                    dragging_scop_rect.topleft = event.pos
                 set_area_x = 150
                 set_area_rect = pygame.Rect(set_area_x + 50, 13, plant_image.get_width(), plant_image.get_height())  # 攻撃用
                 set_area_rect2 = pygame.Rect(set_area_x + 150, 13, plant_image2.get_width(), plant_image2.get_height()) 
@@ -319,6 +331,8 @@ def main():
                     dragging_plant_rect.center = event.pos
                 elif dragging2:
                     dragging_plant_rect2.center = event.pos
+                elif dragging_scop:
+                    dragging_scop_rect.center = event.pos
             
 
             elif event.type == pygame.MOUSEBUTTONUP:
@@ -338,6 +352,18 @@ def main():
                         grid_y = ((mouse_y - INFO_AREA_HEIGHT) // GRID_SIZE) * GRID_SIZE + INFO_AREA_HEIGHT
                         plants.append(Plant_wall(grid_x, grid_y, hp=300))
                         money -= 10
+                elif dragging_scop:
+                    dragging_scop = False
+                    mouse_x, mouse_y = event.pos
+                    if mouse_y > INFO_AREA_HEIGHT and mouse_x > GRID_OFFSET_X:
+                        grid_x = ((mouse_x - GRID_OFFSET_X) // GRID_SIZE) * GRID_SIZE + GRID_OFFSET_X
+                        grid_y = ((mouse_y - INFO_AREA_HEIGHT) // GRID_SIZE) * GRID_SIZE + INFO_AREA_HEIGHT
+                        # 植物リストを検索して削除
+                        for plant in plants[:]:
+                            if plant.rect.collidepoint(grid_x + GRID_SIZE // 2, grid_y + GRID_SIZE // 2):
+                                plants.remove(plant)
+                                break
+
 
 
             # 時間経過でmoneyを増やす
@@ -386,8 +412,13 @@ def main():
             screen.fill(GREEN)
             draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, money, plant_image, score)
             draw_grid(screen, GRID_ROWS, GRID_COLUMNS, GRID_SIZE, GRID_OFFSET_X, INFO_AREA_HEIGHT)
+            # scopアイコンを情報エリアに描画
+            screen.blit(scop_image, (730, 20))
 
-        # ゾンビと植物の衝突判定
+            # ドラッグ中のscopアイテムを描画
+            if dragging_scop:
+                screen.blit(scop_image, dragging_scop_rect.topleft)
+            # ゾンビと植物の衝突判定
             for zombie in zombies:
                 zombie.attacking = False  # 初期化：毎ループでリセット
                 for plant in plants:
