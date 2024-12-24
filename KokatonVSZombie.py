@@ -238,14 +238,14 @@ def main():
 
         # ゾンビと植物の衝突判定
         for zombie in zombies:
+            zombie.attacking = False  # 初期化：毎ループでリセット
             for plant in plants:
                 if zombie.alive and plant.alive and zombie.rect.colliderect(plant.rect):
-                    zombie.attacking = True  # ゾンビは攻撃中
-                    plant.take_damage(1)  # 植物に継続的ダメージ
-                    zombie.take_damage(1)  # ゾンビにも継続的ダメージ
-                else:
-                    zombie.attacking = False  # 衝突していない場合は移動を再開
-
+                    zombie.attacking = True  # 衝突中
+                    plant.take_damage(0.3)  # 植物に継続的ダメージ
+                    if plant.hp <= 0:  # 植物が倒れた場合
+                        plant.alive = False  # 植物を無効化
+                        zombie.attacking = False  # ゾンビは再び移動可能
         # ゾンビの動きと描画
         for zombie in zombies[:]:
             if zombie.alive:
