@@ -78,6 +78,8 @@ class Zombie:
     def move(self):
         if self.alive and not self.attacking:  # 攻撃中でない場合に移動
             self.rect.x -= self.speed
+        elif self.attacking:  # 攻撃中なら停止
+            self.rect.x = (self.rect.x // GRID_SIZE) * GRID_SIZE  # マス位置にスナップ
 
     def take_damage(self, damage):
         """ダメージを受ける"""
