@@ -37,6 +37,10 @@ plant_image = pygame.image.load(os.path.join(current_path, "fig", "7.png"))  # �
 plant_image = pygame.transform.flip(plant_image, True, False)
 plant_image = pygame.transform.scale(plant_image, (50, 75))  # サイズ調整
 
+plant_image2 = pygame.image.load(os.path.join(current_path, "fig", "1.png"))  # 植物画像
+plant_image2 = pygame.transform.flip(plant_image2, True, False)
+plant_image2 = pygame.transform.scale(plant_image2, (50, 75))  # サイズ調整
+
 # moneyの初期値と回復設定
 money = 100
 money_increase_interval = 2000  # moneyが増える間隔（ミリ秒）
@@ -80,10 +84,10 @@ class Zombie:
         self.attacking = False  # 攻撃中フラグ
 
     def move(self):
-        if self.alive and not self.attacking:  # 攻撃中でない場合に移動
-            self.rect.x -= self.speed
-        else:  # 攻撃中は速度を保持するが移動しない
-            self.speed = 0
+        if self.alive:
+            if not self.attacking:  # 攻撃中でなければ移動
+                self.rect.x -= self.speed
+
     def take_damage(self, damage):
         """ダメージを受ける"""
         self.hp -= damage
@@ -129,6 +133,28 @@ class Plant:
             surface.blit(plant_image, self.rect.topleft)
             draw_hp_bar(surface, self.rect, self.hp, self.max_hp)
 
+class Plant_wall:
+    def __init__(self, x, y, hp):
+        self.rect = pygame.Rect(x, y, 50, 75)
+        self.hp = hp  # 植物のHP
+        self.max_hp = hp
+        self.alive = True
+        self.last_shot_time = pygame.time.get_ticks()
+
+    def take_damage(self, damage):
+        """ダメージを受ける"""
+        self.hp -= damage
+        if self.hp <= 0:
+            self.alive = False
+
+    def shoot(self, zombies):
+        pass
+
+    def draw(self, surface):
+        if self.alive:
+            surface.blit(plant_image2, self.rect.topleft)
+            draw_hp_bar(surface, self.rect, self.hp, self.max_hp)
+
 # 弾クラスの定義
 class Bullet:
     def __init__(self, x, y):
@@ -163,6 +189,7 @@ def draw_info_area(surface, width, height, money, plant_image):
     set_area_x = 160  # moneyの隣に配置
     draw_text(surface, "SET", set_area_x, 20, BLACK)
     surface.blit(plant_image, (set_area_x + 50, 5))  # SETエリアに植物アイコンを表示
+    surface.blit(plant_image2, (set_area_x + 150, 5))  # SETエリアに植物アイコンを表示
 
 # メインのゲームループ
 def main():
@@ -176,7 +203,9 @@ def main():
 
     # 植物のドラッグ管理
     dragging = False
+    dragging2 = False
     dragging_plant_rect = plant_image.get_rect()
+    dragging_plant_rect2 = plant_image2.get_rect()
 
     # ゲームループ
     while True:
@@ -187,22 +216,41 @@ def main():
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 set_area_x = 150
-                set_area_rect = pygame.Rect(set_area_x + 50, 13, plant_image.get_width(), plant_image.get_height())
+                set_area_rect = pygame.Rect(set_area_x + 50, 13, plant_image.get_width(), plant_image.get_height())  # 攻撃用
+                set_area_rect2 = pygame.Rect(set_area_x + 150, 13, plant_image2.get_width(), plant_image2.get_height()) 
                 if set_area_rect.collidepoint(event.pos):
                     dragging = True
                     dragging_plant_rect.topleft = event.pos
+                
+                elif set_area_rect2.collidepoint(event.pos):
+                    dragging2 = True
+                    dragging_plant_rect2.topleft = event.pos
 
-            elif event.type == pygame.MOUSEMOTION and dragging:
-                dragging_plant_rect.center = event.pos
+            elif event.type == pygame.MOUSEMOTION:
+                if dragging:
+                    dragging_plant_rect.center = event.pos
+                elif dragging2:
+                    dragging_plant_rect2.center = event.pos
+            
 
-            elif event.type == pygame.MOUSEBUTTONUP and dragging:
-                dragging = False
-                mouse_x, mouse_y = event.pos
-                if mouse_y > INFO_AREA_HEIGHT and mouse_x > GRID_OFFSET_X and money >= 50:
-                    grid_x = ((mouse_x - GRID_OFFSET_X) // GRID_SIZE) * GRID_SIZE + GRID_OFFSET_X
-                    grid_y = ((mouse_y - INFO_AREA_HEIGHT) // GRID_SIZE) * GRID_SIZE + INFO_AREA_HEIGHT
-                    plants.append(Plant(grid_x, grid_y, hp=100))
-                    money -= 50
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if dragging:
+                    dragging = False
+                    mouse_x, mouse_y = event.pos
+                    if mouse_y > INFO_AREA_HEIGHT and mouse_x > GRID_OFFSET_X and money >= 50:
+                        grid_x = ((mouse_x - GRID_OFFSET_X) // GRID_SIZE) * GRID_SIZE + GRID_OFFSET_X
+                        grid_y = ((mouse_y - INFO_AREA_HEIGHT) // GRID_SIZE) * GRID_SIZE + INFO_AREA_HEIGHT
+                        plants.append(Plant(grid_x, grid_y, hp=100))
+                        money -= 50
+                elif  dragging2:
+                    dragging2 = False
+                    mouse_x, mouse_y = event.pos
+                    if mouse_y > INFO_AREA_HEIGHT and mouse_x > GRID_OFFSET_X and money >= 10:
+                        grid_x = ((mouse_x - GRID_OFFSET_X) // GRID_SIZE) * GRID_SIZE + GRID_OFFSET_X
+                        grid_y = ((mouse_y - INFO_AREA_HEIGHT) // GRID_SIZE) * GRID_SIZE + INFO_AREA_HEIGHT
+                        plants.append(Plant_wall(grid_x, grid_y, hp=300))
+                        money -= 10
+
 
         # 時間経過でmoneyを増やす
         current_time = pygame.time.get_ticks()
@@ -267,6 +315,9 @@ def main():
         # ドラッグ中の植物の描画
         if dragging:
             screen.blit(plant_image, dragging_plant_rect.topleft)
+        
+        elif dragging2:
+            screen.blit(plant_image2, dragging_plant_rect2.topleft)
 
         # ゲームオーバー判定
         for zombie in zombies:
