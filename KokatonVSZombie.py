@@ -154,7 +154,7 @@ def draw_grid(surface, rows, columns, grid_size, offset_x, offset_y):
         pygame.draw.line(surface, WHITE, (offset_x, y), (offset_x + columns * grid_size, y))
 
 # 情報エリアを描画する関数
-def draw_info_area(surface, width, height, money, plant_image):
+def draw_info_area(surface, width, height, money, plant_image, score):
     # 情報エリア背景
     pygame.draw.rect(surface, GRAY, (0, 0, width, height))
     # money表示（左上）
@@ -163,6 +163,8 @@ def draw_info_area(surface, width, height, money, plant_image):
     set_area_x = 160  # moneyの隣に配置
     draw_text(surface, "SET", set_area_x, 20, BLACK)
     surface.blit(plant_image, (set_area_x + 50, 5))  # SETエリアに植物アイコンを表示
+    # score表示(右上)
+    draw_text(surface, f"score: {score}", 800, 20, BLACK)
 
 # メインのゲームループ
 def main():
@@ -177,6 +179,9 @@ def main():
     # 植物のドラッグ管理
     dragging = False
     dragging_plant_rect = plant_image.get_rect()
+    
+    # score
+    score = 0
 
     # ゲームループ
     while True:
@@ -230,13 +235,16 @@ def main():
                 if zombie.alive and bullet.rect.colliderect(zombie.rect):
                     zombie.take_damage(BULLET_DAMAGE)
                     bullets.remove(bullet)
+                    score += 1  # スコアを１増やす
+                    if zombie.alive == False:  # ゾンビを倒したら
+                        score *= 2  # スコアを2倍にする
                     break
             if bullet.rect.x > SCREEN_WIDTH:
                 bullets.remove(bullet)
 
         # 背景の描画
         screen.fill(GREEN)
-        draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, money, plant_image)
+        draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, money, plant_image, score)
         draw_grid(screen, GRID_ROWS, GRID_COLUMNS, GRID_SIZE, GRID_OFFSET_X, INFO_AREA_HEIGHT)
 
         # ゾンビと植物の衝突判定
@@ -272,6 +280,7 @@ def main():
         for zombie in zombies:
             if zombie.is_off_screen():
                 draw_text(screen, "GAME OVER", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, BLACK)
+                draw_text(screen, f"score: {score}", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 + 50, BLACK)
                 pygame.display.update()
                 pygame.time.wait(3000)
                 pygame.quit()
