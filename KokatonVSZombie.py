@@ -14,6 +14,7 @@ INFO_AREA_HEIGHT = 80  # 上部の情報エリアの高さ
 GRID_OFFSET_X = 150  # マス目を右にずらすオフセット
 SCREEN_WIDTH = GRID_COLUMNS * GRID_SIZE + GRID_OFFSET_X + 200  # 画面の幅を広げる
 SCREEN_HEIGHT = GRID_ROWS * GRID_SIZE + INFO_AREA_HEIGHT  # 画面の高さ
+game_start = False  # ゲームが開始されているかの真理値
 
 # 色の定義 (RGB形式)
 GREEN = (0, 128, 0)  # 背景の緑色
@@ -167,6 +168,29 @@ class Bullet:
     def draw(self, surface):
         pygame.draw.circle(surface, BLUE, self.rect.center, 5)
 
+def draw_title(screen: pygame.Surface):
+    """
+    タイトル画面を表示する関数
+    引数1 screen：画面Surface
+    """
+    title = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))  # タイトル画面の背景Surface生成
+    pygame.draw.rect(title, (230,230,250), pygame.Rect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT))
+    fonto = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 50)  # タイトルの文字Surface生成
+    title_txt = fonto.render("こうかとん VS ゾンビ", True, (0, 0, 0))  #文字をこうかとん VSゾンビ,色を黒に設定
+    title_txt_rct = title_txt.get_rect()  #タイトルテキストのrectを抽出
+    title_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2-100)
+    dis_txt = fonto.render("Enterを押してゲームスタート", True, (0,0,0))  # 説明の文字Surface生成
+    dis_txt_rct = dis_txt.get_rect()  # 説明テキストのrectを抽出
+    dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+50)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/2.png"), 0, 1.5)
+    kk_rct = kk_img.get_rect()
+    kk_rct.center = 300, 100
+    screen.blit(title, [0,0])
+    screen.blit(title_txt, title_txt_rct)
+    screen.blit(dis_txt, dis_txt_rct)
+    screen.blit(kk_img, kk_rct)
+    pygame.display.update()
+
 # テキストを描画する関数
 def draw_text(surface, text, x, y, color):
     rendered_text = font.render(text, True, color)
@@ -191,9 +215,55 @@ def draw_info_area(surface, width, height, money, plant_image):
     surface.blit(plant_image, (set_area_x + 50, 5))  # SETエリアに植物アイコンを表示
     surface.blit(plant_image2, (set_area_x + 150, 5))  # SETエリアに植物アイコンを表示
 
+def draw_finish(screen: pygame.Surface):
+    """
+    クリア画面を表示する関数
+    引数1 screen：画面Surface
+    """
+    clear = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.draw.rect(clear, (230,230,0), pygame.Rect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT))
+    fonto = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 50)
+    title_txt = fonto.render("クリアおめでとう", True, (0, 0, 0))  #文字をクリアおめでとう,色を黒に設定
+    title_txt_rct = title_txt.get_rect()  #タイトルテキストのrectを抽出
+    title_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2-100)
+    dis_txt = fonto.render("×を押して終了してね", True, (0,0,0))
+    dis_txt_rct = dis_txt.get_rect()
+    dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+50)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/9.png"), 0, 2)
+    kk_rct = kk_img.get_rect()
+    kk_rct.center = 500, 500
+    screen.blit(clear, [0,0])
+    screen.blit(title_txt, title_txt_rct)
+    screen.blit(dis_txt, dis_txt_rct)
+    screen.blit(kk_img, kk_rct)
+
+def draw_gameover(screen: pygame.Surface):
+    """
+    ゲームオーバー画面を表示する関数
+    引数1 screen：画面Surface
+    """
+    gameover = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.draw.rect(gameover, (0,0,0), pygame.Rect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT))
+    fonto = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 100)
+    dis = pygame.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 50)
+    title_txt = fonto.render("Game Over", True, (255, 255, 255))  #文字をGame Over,色を白に設定
+    title_txt_rct = title_txt.get_rect()  #タイトルテキストのrectを抽出
+    title_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2)
+    dis_txt = dis.render("×を押して終了してね", True, (255,255,255))
+    dis_txt_rct = dis_txt.get_rect()
+    dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+100)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/8.png"), 0, 2)
+    kk_rct = kk_img.get_rect()
+    kk_rct.center = 500, 500
+    screen.blit(gameover, [0,0])
+    screen.blit(title_txt, title_txt_rct)
+    screen.blit(dis_txt, dis_txt_rct)
+    screen.blit(kk_img, kk_rct)
+
+
 # メインのゲームループ
 def main():
-    global money, last_money_update, last_zombie_spawn
+    global money, last_money_update, last_zombie_spawn, game_start
     clock = pygame.time.Clock()
 
     # ゾンビと植物のリスト
@@ -213,8 +283,15 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                game_start = True
+        
 
-            elif event.type == pygame.MOUSEBUTTONDOWN:
+        if game_start == False:
+            draw_title(screen)
+
+        elif game_start == True:
+            if event.type == pygame.MOUSEBUTTONDOWN:
                 set_area_x = 150
                 set_area_rect = pygame.Rect(set_area_x + 50, 13, plant_image.get_width(), plant_image.get_height())  # 攻撃用
                 set_area_rect2 = pygame.Rect(set_area_x + 150, 13, plant_image2.get_width(), plant_image2.get_height()) 
@@ -252,84 +329,85 @@ def main():
                         money -= 10
 
 
-        # 時間経過でmoneyを増やす
-        current_time = pygame.time.get_ticks()
-        if current_time - last_money_update >= money_increase_interval:
-            money += money_increase_amount
-            last_money_update = current_time
+            # 時間経過でmoneyを増やす
+            current_time = pygame.time.get_ticks()
+            if current_time - last_money_update >= money_increase_interval:
+                money += money_increase_amount
+                last_money_update = current_time
 
-        # ゾンビを定期的に出現
-        if current_time - last_zombie_spawn >= zombie_spawn_interval:
-            random_row = random.randint(0, GRID_ROWS - 1)
-            zombies.append(Zombie(SCREEN_WIDTH - 50, INFO_AREA_HEIGHT + random_row * GRID_SIZE, speed=1, hp=50))
-            last_zombie_spawn = current_time
+            # ゾンビを定期的に出現
+            if current_time - last_zombie_spawn >= zombie_spawn_interval:
+                random_row = random.randint(0, GRID_ROWS - 1)
+                zombies.append(Zombie(SCREEN_WIDTH - 50, INFO_AREA_HEIGHT + random_row * GRID_SIZE, speed=1, hp=50))
+                last_zombie_spawn = current_time
 
-        # 植物が弾を発射
-        for plant in plants:
-            if plant.alive:
-                bullet = plant.shoot(zombies)
-                if bullet:
-                    bullets.append(bullet)
-
-        # 弾の移動と衝突判定
-        for bullet in bullets[:]:
-            bullet.move()
-            for zombie in zombies:
-                if zombie.alive and bullet.rect.colliderect(zombie.rect):
-                    zombie.take_damage(BULLET_DAMAGE)
-                    bullets.remove(bullet)
-                    break
-            if bullet.rect.x > SCREEN_WIDTH:
-                bullets.remove(bullet)
-
-        # 背景の描画
-        screen.fill(GREEN)
-        draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, money, plant_image)
-        draw_grid(screen, GRID_ROWS, GRID_COLUMNS, GRID_SIZE, GRID_OFFSET_X, INFO_AREA_HEIGHT)
-
-        # ゾンビと植物の衝突判定
-        for zombie in zombies:
-            zombie.attacking = False  # 初期化：毎ループでリセット
+            # 植物が弾を発射
             for plant in plants:
-                if zombie.alive and plant.alive and zombie.rect.colliderect(plant.rect):
-                    zombie.attacking = True  # 衝突中
-                    plant.take_damage(0.3)  # 植物に継続的ダメージ
-                    if plant.hp <= 0:  # 植物が倒れた場合
-                        plant.alive = False  # 植物を無効化
-                        zombie.attacking = False  # ゾンビは再び移動可能
-                        zombie.speed = GLOBAL_ZOMBIE_SPEED  # 速度を元に戻す        # ゾンビの動きと描画
-        for zombie in zombies[:]:
-            if zombie.alive:
-                zombie.move()
-                zombie.draw(screen)
+                if plant.alive:
+                    bullet = plant.shoot(zombies)
+                    if bullet:
+                        bullets.append(bullet)
 
-        # 植物の描画
-        for plant in plants[:]:
-            if plant.alive:
-                plant.draw(screen)
+            # 弾の移動と衝突判定
+            for bullet in bullets[:]:
+                bullet.move()
+                for zombie in zombies:
+                    if zombie.alive and bullet.rect.colliderect(zombie.rect):
+                        zombie.take_damage(BULLET_DAMAGE)
+                        bullets.remove(bullet)
+                        break
+                if bullet.rect.x > SCREEN_WIDTH:
+                    bullets.remove(bullet)
 
-        # 弾の描画
-        for bullet in bullets:
-            bullet.draw(screen)
+            # 背景の描画
+            screen.fill(GREEN)
+            draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, money, plant_image)
+            draw_grid(screen, GRID_ROWS, GRID_COLUMNS, GRID_SIZE, GRID_OFFSET_X, INFO_AREA_HEIGHT)
 
-        # ドラッグ中の植物の描画
-        if dragging:
-            screen.blit(plant_image, dragging_plant_rect.topleft)
-        
-        elif dragging2:
-            screen.blit(plant_image2, dragging_plant_rect2.topleft)
+            # ゾンビと植物の衝突判定
+            for zombie in zombies:
+                zombie.attacking = False  # 初期化：毎ループでリセット
+                for plant in plants:
+                    if zombie.alive and plant.alive and zombie.rect.colliderect(plant.rect):
+                        zombie.attacking = True  # 衝突中
+                        plant.take_damage(0.3)  # 植物に継続的ダメージ
+                        if plant.hp <= 0:  # 植物が倒れた場合
+                            plant.alive = False  # 植物を無効化
+                            zombie.attacking = False  # ゾンビは再び移動可能
+                            zombie.speed = GLOBAL_ZOMBIE_SPEED  # 速度を元に戻す        # ゾンビの動きと描画
+            for zombie in zombies[:]:
+                if zombie.alive:
+                    zombie.move()
+                    zombie.draw(screen)
 
-        # ゲームオーバー判定
-        for zombie in zombies:
-            if zombie.is_off_screen():
-                draw_text(screen, "GAME OVER", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, BLACK)
-                pygame.display.update()
-                pygame.time.wait(3000)
-                pygame.quit()
-                sys.exit()
+            # 植物の描画
+            for plant in plants[:]:
+                if plant.alive:
+                    plant.draw(screen)
 
-        pygame.display.update()
-        clock.tick(60)
+            # 弾の描画
+            for bullet in bullets:
+                bullet.draw(screen)
+
+            # ドラッグ中の植物の描画
+            if dragging:
+                screen.blit(plant_image, dragging_plant_rect.topleft)
+            
+            elif dragging2:
+                screen.blit(plant_image2, dragging_plant_rect2.topleft)
+
+            # ゲームオーバー判定
+            for zombie in zombies:
+                if zombie.is_off_screen():
+                    draw_gameover(screen)
+                    # draw_text(screen, "GAME OVER", SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2, BLACK)
+                    pygame.display.update()
+                    pygame.time.wait(3000)
+                    pygame.quit()
+                    sys.exit()
+
+            pygame.display.update()
+            clock.tick(60)
 
 if __name__ == "__main__":
     main()
