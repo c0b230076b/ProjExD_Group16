@@ -69,6 +69,7 @@ def draw_hp_bar(surface, rect, hp, max_hp):
 class Zombie:
     def __init__(self, x, y, speed, hp):
         self.rect = pygame.Rect(x, y, 50, 75)
+        self.original_speed = speed  # 元の移動速度を保持
         self.speed = speed
         self.hp = hp  # ゾンビのHP
         self.max_hp = hp
@@ -78,9 +79,8 @@ class Zombie:
     def move(self):
         if self.alive and not self.attacking:  # 攻撃中でない場合に移動
             self.rect.x -= self.speed
-        elif self.attacking:  # 攻撃中なら停止
-            self.rect.x = (self.rect.x // GRID_SIZE) * GRID_SIZE  # マス位置にスナップ
-
+        else:  # 攻撃中は速度を保持するが移動しない
+            self.speed = 0
     def take_damage(self, damage):
         """ダメージを受ける"""
         self.hp -= damage
@@ -246,6 +246,7 @@ def main():
                     if plant.hp <= 0:  # 植物が倒れた場合
                         plant.alive = False  # 植物を無効化
                         zombie.attacking = False  # ゾンビは再び移動可能
+                        zombie.speed = zombie.original_speed  # 速度を元に戻す
         # ゾンビの動きと描画
         for zombie in zombies[:]:
             if zombie.alive:
