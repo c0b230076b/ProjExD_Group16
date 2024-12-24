@@ -159,7 +159,7 @@ def draw_info_area(surface, width, height, money, plant_image):
     # SETエリア（moneyの右側に配置）
     set_area_x = 160  # moneyの隣に配置
     draw_text(surface, "SET", set_area_x, 20, BLACK)
-    surface.blit(plant_image, (set_area_x + 50, 13))  # SETエリアに植物アイコンを表示
+    surface.blit(plant_image, (set_area_x + 50, 5))  # SETエリアに植物アイコンを表示
 
 # メインのゲームループ
 def main():
