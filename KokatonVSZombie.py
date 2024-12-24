@@ -67,6 +67,7 @@ def draw_hp_bar(surface, rect, hp, max_hp):
 
 # ゾンビクラスの定義
 class Zombie:
+    """ゾンビの設定"""
     def __init__(self, x, y, speed, hp):
         self.rect = pygame.Rect(x, y, 50, 75)
         self.original_speed = speed  # 元の移動速度を保持
