@@ -51,6 +51,9 @@ BULLET_SPEED = 5
 zombie_spawn_interval = 5000  # 5秒ごとにゾンビを出現
 last_zombie_spawn = pygame.time.get_ticks()
 
+# ゾンビの基本速度をグローバル変数で管理
+GLOBAL_ZOMBIE_SPEED = 1
+
 # HPバーを描画する関数
 def draw_hp_bar(surface, rect, hp, max_hp):
     """HPバーを描画"""
@@ -70,8 +73,7 @@ class Zombie:
     """ゾンビの設定"""
     def __init__(self, x, y, speed, hp):
         self.rect = pygame.Rect(x, y, 50, 75)
-        self.original_speed = speed  # 元の移動速度を保持
-        self.speed = speed
+        self.speed = GLOBAL_ZOMBIE_SPEED  # 現在の移動速度
         self.hp = hp  # ゾンビのHP
         self.max_hp = hp
         self.alive = True
@@ -247,8 +249,7 @@ def main():
                     if plant.hp <= 0:  # 植物が倒れた場合
                         plant.alive = False  # 植物を無効化
                         zombie.attacking = False  # ゾンビは再び移動可能
-                        zombie.speed = zombie.original_speed  # 速度を元に戻す
-        # ゾンビの動きと描画
+                        zombie.speed = GLOBAL_ZOMBIE_SPEED  # 速度を元に戻す        # ゾンビの動きと描画
         for zombie in zombies[:]:
             if zombie.alive:
                 zombie.move()
