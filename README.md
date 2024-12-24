@@ -6,8 +6,6 @@
 
 ## ゲームの概要
 * 進行してくるゾンビを、様々な「こうかとん」を配置して倒すタワーディフェンス型ゲームです。
-* 参考URL：[Plants vs. Zombies™ - Google Play のアプリ](https://play.google.com/store/apps/details?id=com.ea.game.pvzfree_row&hl=ja)
-
 ## ゲームの遊び方
 
 ### 1. ゲーム開始
