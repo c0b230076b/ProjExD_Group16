@@ -56,9 +56,6 @@ BULLET_SPEED = 5
 zombie_spawn_interval = 5000  # 5秒ごとにゾンビを出現
 last_zombie_spawn = pygame.time.get_ticks()
 
-# ゾンビの基本速度をグローバル変数で管理
-GLOBAL_ZOMBIE_SPEED = 1
-
 # HPバーを描画する関数
 def draw_hp_bar(surface, rect, hp, max_hp):
     """HPバーを描画"""
@@ -76,34 +73,44 @@ def draw_hp_bar(surface, rect, hp, max_hp):
 # ゾンビクラスの定義
 class Zombie:
     """ゾンビの設定"""
-    def __init__(self, x, y, speed, hp):
+    def __init__(self, x, y, speed, hp, zombie_image_path):
         self.rect = pygame.Rect(x, y, 50, 75)
-        self.speed = GLOBAL_ZOMBIE_SPEED  # 現在の移動速度
+        self.image = pygame.image.load(os.path.join(current_path, "fig", zombie_image_path))  # ゾンビ画像
+        self.image = pygame.transform.scale(self.image, (75, 95))
+        self.image = pygame.transform.flip(self.image, True, False)
+        self.speed = speed
+        self.initial_speed = speed  # 元の速度を保存
         self.hp = hp  # ゾンビのHP
         self.max_hp = hp
         self.alive = True
         self.attacking = False  # 攻撃中フラグ
 
     def move(self):
-        if self.alive:
-            if not self.attacking:  # 攻撃中でなければ移動
-                self.rect.x -= self.speed
+        if self.alive and not self.attacking:  # 攻撃中でない場合に移動
+            self.rect.x -= self.speed
+        else:  # 攻撃中は速度を保持するが移動しない
+            self.speed = 0
 
     def take_damage(self, damage):
         """ダメージを受ける"""
         self.hp -= damage
-        if self.hp <= 0:
+        if self.hp <= 0: 
             self.alive = False
             self.attacking = False  # 攻撃状態を解除
 
+    def reset_speed(self):
+        """速度を元に戻す"""
+        self.speed = self.initial_speed
+
     def draw(self, surface):
         if self.alive:
-            pygame.draw.rect(surface, RED, self.rect)
+            surface.blit(self.image, self.rect.topleft)
             draw_hp_bar(surface, self.rect, self.hp, self.max_hp)
 
     def is_off_screen(self):
         """ゾンビが左端を通過したかを判定"""
         return self.rect.x < GRID_OFFSET_X
+    
 # 植物クラスの定義
 class Plant:
     def __init__(self, x, y, hp):
@@ -204,7 +211,7 @@ def draw_grid(surface, rows, columns, grid_size, offset_x, offset_y):
         pygame.draw.line(surface, WHITE, (offset_x, y), (offset_x + columns * grid_size, y))
 
 # 情報エリアを描画する関数
-def draw_info_area(surface, width, height, money, plant_image):
+def draw_info_area(surface, width, height, money, plant_image, score):
     # 情報エリア背景
     pygame.draw.rect(surface, GRAY, (0, 0, width, height))
     # money表示（左上）
@@ -214,6 +221,8 @@ def draw_info_area(surface, width, height, money, plant_image):
     draw_text(surface, "SET", set_area_x, 20, BLACK)
     surface.blit(plant_image, (set_area_x + 50, 5))  # SETエリアに植物アイコンを表示
     surface.blit(plant_image2, (set_area_x + 150, 5))  # SETエリアに植物アイコンを表示
+    # score表示(右上)
+    draw_text(surface, f"score: {score}", 800, 20, BLACK)
 
 def draw_finish(screen: pygame.Surface):
     """
@@ -260,7 +269,6 @@ def draw_gameover(screen: pygame.Surface):
     screen.blit(dis_txt, dis_txt_rct)
     screen.blit(kk_img, kk_rct)
 
-
 # メインのゲームループ
 def main():
     global money, last_money_update, last_zombie_spawn, game_start
@@ -283,6 +291,9 @@ def main():
     dragging_scop = False
     dragging_scop_rect = scop_image.get_rect()
     dragging_scop_rect.topleft = (730, 20)  # 初期位置（情報エリア内）
+    
+    # score
+    score = 0
 
     # ゲームループ
     while True:
@@ -363,8 +374,17 @@ def main():
 
             # ゾンビを定期的に出現
             if current_time - last_zombie_spawn >= zombie_spawn_interval:
+                random_zombie = random.randint(0, 100)
                 random_row = random.randint(0, GRID_ROWS - 1)
-                zombies.append(Zombie(SCREEN_WIDTH - 50, INFO_AREA_HEIGHT + random_row * GRID_SIZE, speed=1, hp=50))
+                if random_zombie <= 50:
+                    #50%で通常ゾンビ
+                    zombies.append(Zombie(SCREEN_WIDTH - 50, INFO_AREA_HEIGHT + random_row * GRID_SIZE, speed=2, hp=30, zombie_image_path="zombie_image_2.png"))
+                elif 51 <= random_zombie <= 75:  
+                    #25%で足早+耐久低ゾンビ
+                    zombies.append(Zombie(SCREEN_WIDTH - 50, INFO_AREA_HEIGHT + random_row * GRID_SIZE, speed=4, hp=10, zombie_image_path="zombie_image_1.png"))
+                elif 76 <= random_zombie <= 100:
+                    #25%で足遅+耐久高ゾンビ
+                    zombies.append(Zombie(SCREEN_WIDTH - 50, INFO_AREA_HEIGHT + random_row * GRID_SIZE, speed=1, hp=60, zombie_image_path="zombie_image_3.png"))
                 last_zombie_spawn = current_time
 
             # 植物が弾を発射
@@ -381,13 +401,16 @@ def main():
                     if zombie.alive and bullet.rect.colliderect(zombie.rect):
                         zombie.take_damage(BULLET_DAMAGE)
                         bullets.remove(bullet)
+                        score += 1  # スコアを１増やす
+                        if zombie.alive == False:  # ゾンビを倒したら
+                            score *= 2  # スコアを2倍にする
                         break
                 if bullet.rect.x > SCREEN_WIDTH:
                     bullets.remove(bullet)
 
-            # 背景の描画
+            #背景の描画
             screen.fill(GREEN)
-            draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, money, plant_image)
+            draw_info_area(screen, SCREEN_WIDTH, INFO_AREA_HEIGHT, money, plant_image, score)
             draw_grid(screen, GRID_ROWS, GRID_COLUMNS, GRID_SIZE, GRID_OFFSET_X, INFO_AREA_HEIGHT)
             # scopアイコンを情報エリアに描画
             screen.blit(scop_image, (730, 20))
@@ -405,7 +428,10 @@ def main():
                         if plant.hp <= 0:  # 植物が倒れた場合
                             plant.alive = False  # 植物を無効化
                             zombie.attacking = False  # ゾンビは再び移動可能
-                            zombie.speed = GLOBAL_ZOMBIE_SPEED  # 速度を元に戻す        # ゾンビの動きと描画
+                            zombie.reset_speed()  # 速度を元に戻す        # ゾンビの動きと描画
+                            break
+                if not zombie.attacking and zombie.alive:  # 攻撃中でなければ速度をリセット
+                    zombie.reset_speed()
             for zombie in zombies[:]:
                 if zombie.alive:
                     zombie.move()
