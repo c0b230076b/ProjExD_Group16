@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 import random
+import time
 
 # Pygameの初期化
 pygame.init()
@@ -14,7 +15,7 @@ INFO_AREA_HEIGHT = 80  # 上部の情報エリアの高さ
 GRID_OFFSET_X = 150  # マス目を右にずらすオフセット
 SCREEN_WIDTH = GRID_COLUMNS * GRID_SIZE + GRID_OFFSET_X + 200  # 画面の幅を広げる
 SCREEN_HEIGHT = GRID_ROWS * GRID_SIZE + INFO_AREA_HEIGHT  # 画面の高さ
-game_start = False  # ゲームが開始されているかの真理値
+game_start = None  # ゲームが開始されているかの真理値
 
 # 色の定義 (RGB形式)
 GREEN = (0, 128, 0)  # 背景の緑色
@@ -189,7 +190,7 @@ def draw_title(screen: pygame.Surface):
     dis_txt = fonto.render("Enterを押してゲームスタート", True, (0,0,0))  # 説明の文字Surface生成
     dis_txt_rct = dis_txt.get_rect()  # 説明テキストのrectを抽出
     dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+50)
-    kk_img = pygame.transform.rotozoom(pygame.image.load("./fig/2.png"), 0, 1.5)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/2.png"), 0, 1.5)
     kk_rct = kk_img.get_rect()
     kk_rct.center = 300, 100
     screen.blit(title, [0,0])
@@ -261,7 +262,7 @@ def draw_gameover(screen: pygame.Surface):
     dis_txt = dis.render("×を押して終了してね", True, (255,255,255))
     dis_txt_rct = dis_txt.get_rect()
     dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+100)
-    kk_img = pygame.transform.rotozoom(pygame.image.load("./fig/8.png"), 0, 2)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/8.png"), 0, 2)
     kk_rct = kk_img.get_rect()
     kk_rct.center = 500, 500
     screen.blit(gameover, [0,0])
@@ -305,8 +306,12 @@ def main():
                 game_start = True
         
 
-        if game_start == False:
+        if game_start == None:
             draw_title(screen)
+        if score >= 1000000:  # scoreが100万を超えるとクリア
+            game_start = False
+            draw_finish(screen)
+            pygame.display.update()
 
         elif game_start == True:
             if event.type == pygame.MOUSEBUTTONDOWN:
