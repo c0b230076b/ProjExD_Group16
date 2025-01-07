@@ -6,6 +6,7 @@ import time
 
 # Pygameの初期化
 pygame.init()
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # 画面サイズとマス目サイズの設定
 GRID_ROWS = 5  # マスの行数
@@ -190,7 +191,7 @@ def draw_title(screen: pygame.Surface):
     dis_txt = fonto.render("Enterを押してゲームスタート", True, (0,0,0))  # 説明の文字Surface生成
     dis_txt_rct = dis_txt.get_rect()  # 説明テキストのrectを抽出
     dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+50)
-    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/2.png"), 0, 1.5)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("fig/2.png"), 0, 1.5)
     kk_rct = kk_img.get_rect()
     kk_rct.center = 300, 100
     screen.blit(title, [0,0])
@@ -239,7 +240,7 @@ def draw_finish(screen: pygame.Surface):
     dis_txt = fonto.render("×を押して終了してね", True, (0,0,0))
     dis_txt_rct = dis_txt.get_rect()
     dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+50)
-    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/9.png"), 0, 2)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("fig/9.png"), 0, 2)
     kk_rct = kk_img.get_rect()
     kk_rct.center = 500, 500
     screen.blit(clear, [0,0])
@@ -262,7 +263,7 @@ def draw_gameover(screen: pygame.Surface):
     dis_txt = dis.render("×を押して終了してね", True, (255,255,255))
     dis_txt_rct = dis_txt.get_rect()
     dis_txt_rct.center = (SCREEN_WIDTH/2, SCREEN_HEIGHT/2+100)
-    kk_img = pygame.transform.rotozoom(pygame.image.load("ex5/fig/8.png"), 0, 2)
+    kk_img = pygame.transform.rotozoom(pygame.image.load("fig/8.png"), 0, 2)
     kk_rct = kk_img.get_rect()
     kk_rct.center = 500, 500
     screen.blit(gameover, [0,0])
